@@ -119,6 +119,15 @@ func TestOutboundCallWriteToRequestAndRequestMeta(t *testing.T) {
 				RoutingDelegate: "zzz",
 			},
 		},
+		{
+			desc: "decorator tags",
+			giveOptions: []CallOption{
+				WithDecoratorTags(map[string]string{"testKey": "testVal"}),
+			},
+			wantRequest: transport.Request{
+				DecoratorTags: map[string]string{"testKey": "testVal"},
+			},
+		},
 	}
 
 	for _, tt := range tests {

@@ -32,12 +32,15 @@ import (
 )
 
 func TestCallOptionsWriteToRequest(t *testing.T) {
+	decoratorTags := map[string]string{"testKey": "testVal"}
+
 	outboundCall := encoding.NewOutboundCall(
 		pkgencoding.FromOptions(
 			[]yarpc.CallOption{
 				yarpc.WithShardKey("foo"),
 				yarpc.WithRoutingKey("bar"),
 				yarpc.WithRoutingDelegate("baz"),
+				yarpc.WithDecoratorTags(decoratorTags),
 			},
 		)...,
 	)
@@ -47,6 +50,8 @@ func TestCallOptionsWriteToRequest(t *testing.T) {
 	assert.Equal(t, "foo", request.ShardKey)
 	assert.Equal(t, "bar", request.RoutingKey)
 	assert.Equal(t, "baz", request.RoutingDelegate)
+	assert.NotEmpty(t, request.DecoratorTags)
+	assert.Equal(t, decoratorTags, request.DecoratorTags)
 }
 
 func TestCallFromContext(t *testing.T) {

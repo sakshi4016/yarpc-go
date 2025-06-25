@@ -191,3 +191,13 @@ func (c *Call) CallerProcedure() string {
 //
 // These may be used to add or alter individual stream calls.
 type StreamOption encoding.StreamOption
+
+// DecoratorTags contains custom tags which is later populated to outbound YARPC metrics.
+func (c *Call) DecoratorTags() string {
+	return (*encoding.Call)(c).CallerProcedure()
+}
+
+// WithDecoratorTags sets the custom decorator tags for this request.
+func WithDecoratorTags(dt map[string]string) CallOption {
+	return CallOption(encoding.WithDecoratorTags(dt))
+}

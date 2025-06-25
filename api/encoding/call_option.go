@@ -92,3 +92,14 @@ func (r routingDelegateOption) apply(call *OutboundCall) {
 func WithRoutingDelegate(rd string) CallOption {
 	return CallOption{routingDelegateOption(rd)}
 }
+
+type decoratorTagsOptions map[string]string
+
+func (r decoratorTagsOptions) apply(call *OutboundCall) {
+	call.decoratorTags = r
+}
+
+// WithDecoratorTags sets the custom decorator tags for this request.
+func WithDecoratorTags(dt map[string]string) CallOption {
+	return CallOption{decoratorTagsOptions(dt)}
+}

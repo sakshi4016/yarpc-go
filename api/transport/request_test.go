@@ -166,6 +166,7 @@ func TestRequestMetaToRequestConversionAndBack(t *testing.T) {
 		RoutingKey:      "rk",
 		RoutingDelegate: "rd",
 		CallerProcedure: "cp",
+		DecoratorTags:   map[string]string{"testKey": "testVal"},
 	}
 
 	req := reqMeta.ToRequest()

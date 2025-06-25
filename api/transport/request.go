@@ -75,6 +75,9 @@ type Request struct {
 	// content-length. It should be noted that this value is set manually and
 	// will not be updated automatically if the body is being modified
 	BodySize int
+
+	// DecoratorTags contains custom tags which is later populated to outbound YARPC metrics.
+	DecoratorTags map[string]string
 }
 
 // ToRequestMeta converts a Request into a RequestMeta.
@@ -90,6 +93,7 @@ func (r *Request) ToRequestMeta() *RequestMeta {
 		RoutingKey:      r.RoutingKey,
 		RoutingDelegate: r.RoutingDelegate,
 		CallerProcedure: r.CallerProcedure,
+		DecoratorTags:   r.DecoratorTags,
 	}
 }
 
@@ -198,6 +202,9 @@ type RequestMeta struct {
 
 	// CallerProcedure refers to the name of the rpc procedure of the service making this request.
 	CallerProcedure string
+
+	// DecoratorTags contains custom tags which is later populated to outbound YARPC metrics.
+	DecoratorTags map[string]string
 }
 
 // ToRequest converts a RequestMeta into a Request.
@@ -216,5 +223,6 @@ func (r *RequestMeta) ToRequest() *Request {
 		RoutingKey:      r.RoutingKey,
 		RoutingDelegate: r.RoutingDelegate,
 		CallerProcedure: r.CallerProcedure,
+		DecoratorTags:   r.DecoratorTags,
 	}
 }

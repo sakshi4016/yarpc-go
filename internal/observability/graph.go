@@ -27,6 +27,7 @@ import (
 
 	"go.uber.org/net/metrics"
 	"go.uber.org/net/metrics/bucket"
+	"go.uber.org/yarpc/api/metrics/metricstagdecorator"
 	"go.uber.org/yarpc/api/transport"
 	"go.uber.org/yarpc/internal/digester"
 	"go.uber.org/zap"
@@ -72,6 +73,7 @@ type graph struct {
 	logger           *zap.Logger
 	extract          ContextExtractor
 	ignoreMetricsTag *metricsTagIgnore
+	decoratorTags    *metrics.Tags
 
 	edgesMu sync.RWMutex
 	edges   map[string]*edge
@@ -164,13 +166,14 @@ func (m *metricsTagIgnore) tags(req *transport.Request, direction string, rpcTyp
 	return tags
 }
 
-func newGraph(meter *metrics.Scope, logger *zap.Logger, extract ContextExtractor, metricTagsIgnore []string) graph {
+func newGraph(meter *metrics.Scope, logger *zap.Logger, extract ContextExtractor, metricTagsIgnore []string, metricsTagsDecorators []metricstagdecorator.MetricsTagDecorator) graph {
 	return graph{
 		edges:            make(map[string]*edge, _defaultGraphSize),
 		meter:            meter,
 		logger:           logger,
 		extract:          extract,
 		ignoreMetricsTag: newMetricsTagIgnore(metricTagsIgnore),
+		decoratorTags:    getDecoratorTags(logger, metricsTagsDecorators),
 		inboundLevels: levels{
 			success:          zapcore.DebugLevel,
 			failure:          zapcore.ErrorLevel,
@@ -264,7 +267,7 @@ func (g *graph) createEdge(key []byte, req *transport.Request, direction string,
 		return e
 	}
 
-	e := newEdge(g.logger, g.meter, g.ignoreMetricsTag, req, direction, rpcType)
+	e := newEdge(g.logger, g.meter, g.ignoreMetricsTag, g.decoratorTags, req, direction, rpcType)
 	g.edges[string(key)] = e
 	return e
 }
@@ -309,8 +312,15 @@ type streamEdge struct {
 
 // newEdge constructs a new edge. Since Registries enforce metric uniqueness,
 // edges should be cached and re-used for each RPC.
-func newEdge(logger *zap.Logger, meter *metrics.Scope, tagToIgnore *metricsTagIgnore, req *transport.Request, direction string, rpcType transport.Type) *edge {
+func newEdge(logger *zap.Logger, meter *metrics.Scope, tagToIgnore *metricsTagIgnore, decoratorTags *metrics.Tags, req *transport.Request, direction string, rpcType transport.Type) *edge {
 	tags := tagToIgnore.tags(req, direction, rpcType)
+
+	// Merge custom decorator tags into the YARPC metrics base tag set.
+	if decoratorTags != nil {
+		for key, value := range *decoratorTags {
+			tags[key] = value
+		}
+	}
 
 	// metrics for all RPCs
 	calls, err := meter.Counter(metrics.Spec{
@@ -602,4 +612,20 @@ func unknownIfEmpty(t string) string {
 		t = "unknown"
 	}
 	return t
+}
+
+// getDecoratorTags collects tags from all provided MetricsTagDecorators.
+func getDecoratorTags(logger *zap.Logger, metricsTagsDecorators []metricstagdecorator.MetricsTagDecorator) *metrics.Tags {
+	decoratorTags := metrics.Tags{}
+	for _, decorator := range metricsTagsDecorators {
+		tags := decorator.ProvideTags()
+		for key, value := range tags {
+			if oldValue, exists := decoratorTags[key]; exists {
+				logger.Warn("MetricsTagsDecorators is overwriting metric tag", zap.String("key", key), zap.String("old", oldValue), zap.String("new", value))
+			}
+			decoratorTags[key] = value
+		}
+	}
+
+	return &decoratorTags
 }
